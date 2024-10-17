@@ -1,0 +1,626 @@
+---
+title: "Data Visualisation - An Overview"
+---
+
+```{r error=FALSE, message=FALSE, warning=FALSE, include=FALSE, echo=FALSE}
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(GGally)
+library(gapminder)
+library(ggmosaic)
+library(psych)
+library(car)
+
+```
+
+
+
+```{r message=FALSE}
+
+setwd("D:/Outline/Webinar-1")
+
+
+```
+
+
+###Anatomy of a Story:###
+
+**Any story has some characters and there are few main characters around with the story revolves**.
+
+**At times we dont know who are the main character. But would like to know.** 
+
+**Then there is another interesting aspect - relationship among characters. Nature of the relationship and strength of the relationship.** 
+
+**The nature of the relationship can be understood as positive / negative, direct or indirect etc.**
+
+**Finally, the most crucial ingredient i.e. time. With Time nature as well as the strength changes.**  
+
+
+
+### Visualisation:###
+
+One critial aspect of visualizationis is to generate or hold interest. So at times we will use some aesthetics so that stories becomes little colourfull.
+
+
+Types:
+
+1. Based on number of variables / characters (univariate / multivariate)
+
+2. Static or interactive
+
+
+
+In this brief presentation all these aspects will be touced upon.
+
+
+
+### Story from Data: ###
+
+* When we develop stories from data "purpose" is of critical importance. 
+
+* Is it a purely an exploratory excercise?
+
+* Are we explaining a relationship and how it would like to pan out in the futrue?
+
+* Are we going to explain a concept , more specifically a statistical concept?
+
+
+In the following sections, we will start will very simple datatset and add context(s) to that.
+
+
+### First Story ###
+
+
+In the following section, we shall delving into a very small exercise. 
+
+```{r,}
+
+income <- read.csv("income.csv")
+str(income)
+summary(income)
+
+```
+
+
+So we have 6 charcters which are self explanatory - only that ed refer to "education".
+
+We are considering "income" as a phenomena for our study. Therefore, "height" variable is not being considered.
+
+
+```{r, message=FALSE,echo=F}
+
+ggplot(data = income, aes(x = race)) + geom_bar(aes(fill = race))
+
+ggplot(data = income, aes(x = sex)) + geom_bar(aes(fill = sex))
+
+ggplot(data = income, aes(x = sex)) + geom_bar(aes(fill = race))
+
+
+```
+
+All the figures talks about the compostion of the data in terms of race and gender. Observations are as follows -
+
+ 1. Overwhelming presence of "white" people.
+ 
+ 2. There are more females compared to males
+ 
+ 3. Almost equal number people from each race have been involved in the study.
+ 
+ Please note all diagrames are static in nature, they are not interactive in nature. In the  next section we would like to understand the demographic profile and will also experience "interactive" charts.
+ 
+ 
+```{r message=F, echo=FALSE}
+
+# Composition of Data - First example of interactive plot
+
+income %>% plot_ly(x = ~race) %>%  add_histogram(color=~sex) %>% group_by(race, sex) %>%
+  summarise(n = n())
+
+income %>% plot_ly(x = ~race) %>% add_pie(labels = c("Male","Female"), values = table(income$sex))
+
+income %>% plot_ly(x = ~race) %>% add_pie(labels = c("Black", "Hispanic", "Others","White"), values = table(income$race))
+
+
+# Enriching a plot with information:
+
+plot_ly(data = income , y = ~earn , x = ~ed, type = "scatter") #  a simple plot
+
+plot_ly(data = income , y = ~earn , x = ~ed, type = "scatter",  text = ~paste('</b> Sex:', sex,'</b>Race :', race, '</b> Age :', age), mode = "markers") # enriching scatter plot
+
+
+```
+ 
+ * The first plot is an ineractive one - once you place your cursor on the diagram it will provide information pertaining to that area. This informaation is known as "hoverinfo" as hovers the cursor , pertinent informatio. will be revealed.
+ 
+ * If one places cursor on the last two scatter plots, once can find the information content is significantly different. Therefore, such information can becustomised.
+ 
+ * So, apart from examining the composition of dataset and a feel of static and interactive graphs , nothing much has been unearthed. In the following section we shall be examining the data from demographic angles - 
+
+
+```{r, echo=F}
+
+# Examining demographic profiles
+
+table1 <- income %>% group_by(race,sex) %>% summarize(avg.income = mean(earn), Edu_Years = mean(ed),Nos = n())
+
+colnames(table1) <- c("Race","Gender", "Avg.Income", "Avg.Education","Nos")
+
+table1
+
+# Examining - educational profile - race and geder
+
+plot_ly(income,  y = ~ed, color = ~race, type = "box")
+
+plot_ly(table1, x = ~Race, y = ~Avg.Education, color = ~Race, type = "bar")
+
+plot_ly(table1, x = ~Race, y = ~Avg.Education, color = ~Gender, type = "bar")
+
+
+```
+
+* In terms of educational "others" have more educated than other races.Further, females beloging to "black" and "others" have more devoted more time in education.
+
+
+In the next section - we will explore the income profile.
+
+```{r, message=FALSE, error=FALSE, echo=FALSE}
+
+
+plot_ly(data = income, x = ~race, y = ~earn, color  = ~race, type = "box")
+
+
+plot_ly(data = income, x = ~sex, y = ~earn, color  = ~sex, type = "box")
+
+
+plot_ly(data = table1, x = ~Race, y = ~Avg.Income, color  = ~Race, type = "bar")
+
+
+plot_ly(data = table1, x = ~Gender, y = ~Avg.Income, color  = ~Gender, type = "bar")
+
+
+plot_ly(data = table1, x = ~Race, y = ~Avg.Income, color = ~Gender, size = ~Avg.Income, type = "bar")
+
+
+```
+
+
+In terms of income disparity following things can be noted - 
+
+1. Within "whites" there is a section of people whose income is significantly greater than others.
+
+2. White people have the highest average income and hispanic earns lowest.
+
+3. Scores of males who earns more than females.
+
+4. The average income of females are greater than males ONLY for hispanic. For rest, average income of males are greater
+
+
+In the following section we shall take a unified view - including education and income. 
+
+```{r message=FALSE, error=FALSE, echo=FALSE}
+
+ggplot(data = income, aes(x = ed, y = earn))  + geom_point(aes(color = sex)) + facet_wrap(income$race) + geom_smooth(method = "lm")
+
+ggplot(data = income, aes(x = ed, y = earn))  + geom_point(aes(color = sex, size = ed)) + facet_wrap(income$sex) + geom_smooth(method = "lm")
+
+library(car)
+coplot(earn ~ ed | race*sex, data = income, subscripts = T, panel.car(income$ed,income$earn,reg.line = lm))
+
+
+
+```
+
+* From the first plots one can note that the slope is steepest for "others" and very flat  for "black".
+
+* The second plot shows that trend line for males signifcantly steeper than that of males -  this is an indication of "gender discrimation"
+
+* The third diagram , allows to explore the realtionship between education and earnings,from both the perspectives of gender and race.
+
+ 
+
+### Story -2 ###
+
+In this story we are looking at effect of watching video games. 
+
+```{r,echo=FALSE}
+
+video <- read.csv("aggression.csv")
+str(video)
+summary(video)
+
+```
+
+
+In this particular dataset we have three variable -
+
+1. No. of hours / week used to watch (violent) videos
+2. Aggression
+2. Callous Unemotional Trait 
+
+Therefore, this story is about examining relationship between aggression and time spent in watching videos.
+
+
+```{r,echo=FALSE}
+
+plot_ly( data = video, x = ~Vid_Game , y = ~Aggress, z = ~as.matrix(CaUnTs)) %>% add_contour()
+
+video$Aggress <- as.numeric(video$Aggress)
+
+video$Vid_Game <- as.numeric(video$Vid_Game)
+
+```
+
+
+
+The variable which are of our interst are Agress, Vid_Game and CaUnTs. So this is a small story which just involves three variables.
+
+
+```{r echo=FALSE}
+
+plot_ly(data = video,x = ~Vid_Game, y = ~Aggress, color = ~CaUnTs, size = ~CaUnTs, type = "scatter")
+
+
+```
+
+Now , we all know the agression is a behaviour , which depends upon attitude. Now CaUnTs which inplies Casual and Unemotional aspect of the subjects - may be considered as attitude.
+
+I am considering them as the context. In any visalisaion , interplay of variable should be seen in a context. 
+
+From the above plot one can note that - 
+
+- there is section of people represented by "small and blue" dots - for them , watching videos for long hours dont lead to aggressive behavior. 
+
+- and there is section (represeneted by larger points with green and yellow COLOR) , for them increase in exposure to violent videos lead to increase in aggression.
+
+And to be sure the next plot is drawn. 
+
+```{r,echo=FALSE}
+
+
+ggplot(data = video, aes(x = Vid_Game, y = Aggress)) + geom_point(aes(size = CaUnTs, color = CaUnTs)) + facet_grid(cut(video$CaUnTs,4)) + geom_smooth(method = "lm", color = "red")
+
+```
+
+In this plot (static in nature) we have explored the relation ship between exposure to violent videos and aggression. 
+
+Four sub-plots shows , that people having higher CaUnTs (as represented by larges points) shows more aggression as they are exposed to videos. 
+
+
+So the relationship between Agression and No.of hours spent to watch videos(violent) depends upon the value of CaUnTs. This phenomena in statistics is known as "MODERATION". And we have used to unravel this relationship with the help of visualisaiton. 
+
+In the following section we shall see how such relationships should modelled. Let us take only two variables , i.e. no of hours spent to watch violent videoa and second is CaUnTs. 
+
+
+```{r,echo=FALSE}
+library(psych)
+
+m1 <- lm(Aggress ~ Vid_Game + CaUnTs, data = video)
+summary(m1)
+
+
+
+```
+
+So, R^2 stands at 35.6%. At the same time all the coefficients are significant.
+
+Since , the relationship between agression and no of hours spent to watch video  is moderated by the attitude (CaUnTs) - we are considering to inlcude "an interaction term" - which is the product of the two predictors.  
+
+```{r,echo=FALSE}
+
+video$Interaction = video$Vid_Game * video$CaUnTs
+
+summary(lm(Aggress ~ Vid_Game + CaUnTs + Interaction, data = video))
+
+
+```
+
+
+
+```{r}
+
+```
+
+From the summary, we can not that R^2 has increased to 37.7%. Also we can observe the following - 
+
+1. CaUnTs is NO LONGER a significant predictor
+
+2. Interaction term  is signifcant at .1% level. 
+
+3. Vid_Game i.e. hours spent to watch video is signficant at 5%.
+
+
+
+
+
+###Story-3###
+
+Now,we shall be exploring a real experiment that explored that **Role of Media** and its **influence**. 
+
+The experiment involved 123 students of auniversity of Israel who were made to read an article on possisble shortage of sugar in the country. 
+
+The students were segregated into two groups.One group was told that the said article will be appearing on the **front page** and another group was told that the same article will be published in **inner pages** of a news paper. [Tal-Or, N., Cohen, J., Tsafati, Y., & Gunther, A. C. (2010)]
+
+```{r, echo=FALSE}
+
+pmi <-read.csv("pmi.csv")
+
+str(pmi)
+
+```
+
+**Variable Descriptor**
+
+* cond - in which page the article is published (1 = front page ,0 = inner page)
+
+* pmi - influence of the article on the readers
+
+* reaction - reaction of the reader in terms purchasing intent
+
+* import - importance ascribed by the readers
+
+```{r,echo=FALSE, message=FALSE}
+library(lattice)
+library(plotly)
+
+plot_ly(data = pmi) %>% add_pie(values = table(pmi$gender),labels = c("Female","Male"))
+
+plot_ly(data = pmi) %>% add_pie(values = table(cut(pmi$age,5)))
+
+
+densityplot(~pmi|factor(cond),data = pmi)
+
+densityplot(~reaction|factor(cond),data = pmi)
+
+densityplot(~import|factor(cond),data = pmi)
+
+```
+
+* Influence of the article increaes if it is published on the front page.
+
+* Reaction of the readers who were told that the article will be published on the front page is  also higher. Similar observation can also be made about **importance**.
+
+
+
+```{r, echo=FALSE}
+
+library(ggplot2)
+
+ggplot(data = pmi, aes(x = pmi,y = reaction), type = "scatter") + facet_wrap(pmi$gender)
+
+
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+### Story - 3 ###
+
+The third story is about the study done on moderating role of social ties on entrepreneurs' depressed affect and withdrawal intentions in response to economic stress by Pollack, J., VanEpps, E. M., & Hayes, A. F. (2012). (The . Journal of Organizational Behavior, 33, 789-810.)
+ 
+
+
+```{r,echo=FALSE}
+
+stress <- read.csv("e_stress.csv")
+
+str(stress)
+
+summary(stress)
+
+```
+
+Let us first understand the experiment - characters / variables - 
+
+- estress - economic stress , the main phenomena 
+
+
+- ese - economic and social ties (business networking, i.e. no of people respondent physically met on a  + talked to over phone and sent an email on Everday day. 
+
+
+- affect - depression due to economic stress 
+
+
+- withdraw - closing business 
+
+
+- tenure - experience in the business
+
+
+- Rest of the variables are demographic variables and self explanatory in nature.
+
+So, the strings of relationships starts with economic stress and ends with withdrawl symptoms.
+
+Let us the exploration beigns - 
+
+```{r}
+
+plot_ly(data = stress) %>% add_pie(values = table(stress$sex), labels = c("female", "male") ) 
+
+
+plot_ly(data = stress) %>% add_pie(values = table(cut(stress$age,5)), labels = c("< 32.6", "> 32.6 & <=42.2", ">42.2 & <=51.8", ">51.8 & <=61.4", ">61.4 & <=71"))
+
+
+
+plot_ly(data = stress) %>% add_pie(values = table(cut(stress$tenure,5)), labels = c("<=6.6 yrs", ">6.6 & <=13.2 yrs", ">13.2 & <=19.2 yrs", ">19.8 & <= 26.4 yrs" , "> 26.4 & <= 33"))
+
+
+```
+
+
+Demographic profile - 
+
+1. Gender profile - 62% male and 38% female
+
+2. Age profile - 30% of respondetns belongs age range 42 to 52; appraox 28% belongs to 32 to 42. 17% belong to lesst 32 years
+
+3. Tenure profile - 68% respondents have less than 6.6 years of experience and 20% has expereince of greater than 6.6 and less than 13.2 years. So this two groups constitutes almost 88% of the population. 
+
+
+Now, we shall explore some relationship among the variables, following variables are closely related -
+
+- estress
+
+- withdraw 
+
+- affect
+
+
+```{r, message=FALSE,echo=FALSE}
+
+library(ppcor)
+
+p_cor <- pcor(stress)
+
+cor_est <- p_cor$estimate
+ 
+cor_est<- as.data.frame(cor_est)
+
+plot_ly(data = cor_est, x = rownames(cor_est), y = colnames(cor_est), z = as.matrix(cor_est), colours = "RdBu") %>% add_heatmap()
+
+```
+
+1. From the above correlation diagram that "withdrawal" phenomena is most strongly related with  affect (depression),economic stress and ese (business related social ties). 
+
+
+2. affect (depression) is strongly connected with economic stress. 
+
+3. economic stress (estress) is strongly correlated with affect (depression)
+
+
+```{r, warning=F, message=F}
+
+
+ggplot(data = stress, aes(y = withdraw , x = estress), type =  "scatter") + geom_smooth(method = "lm")
+
+ggplot(data = stress, aes(y = withdraw , x = estress), type =  "scatter") + geom_smooth(method = "lm") + facet_wrap(stress$sex)
+
+ggplot(data = stress, aes(y = withdraw , x = estress), type =  "scatter") + geom_smooth(method = "lm") + facet_wrap(cut(stress$tenure,4))
+
+
+
+
+```
+
+
+1. As expected with increase in economic stress we find that tendency to withdraw increases. Next , we will see whether this relationship is modified by any other variables. 
+
+2. As can be seen that the gender modified the relationship. 
+
+3. Tenure also modifes the relationship.
+
+
+
+```{r}
+
+ggplot(data = stress, aes(y = withdraw , x = ese), type =  "scatter") + geom_smooth(method = "lm")
+
+ggplot(data = stress, aes(y = withdraw , x = ese), type =  "scatter") + geom_smooth(method = "lm") + facet_wrap(stress$sex) # gender is not modifyig the relation
+
+ggplot(data = stress, aes(y = withdraw , x = ese), type =  "scatter") + geom_smooth(method = "lm") + facet_wrap(cut(stress$tenure,4))
+
+
+
+```
+
+1. as expected / hypothesised , with greater intensity of communication within business network leads to lesser tendency of withdrawal. 
+
+2. Tenure does modfy the relationship , but gender has no significant role.
+
+
+
+```{r, echo=FALSE}
+
+ggplot(data = stress, aes(y = withdraw , x = affect), type =  "scatter") + geom_smooth(method = "lm") 
+
+
+
+ggplot(data = stress, aes(y = withdraw , x = affect), type =  "scatter") + geom_smooth(method = "lm") + facet_wrap(cut(stress$tenure,4))
+
+
+
+```
+
+1. In line with the expectation increase in depression will lead higher tendency to withdraw. 
+
+2. The direction of the relationship remains same, when gender is factored into. 
+
+
+```{r}
+library(ppcor)
+
+pcor(stress)
+
+# option -1 #
+
+summary(lm(withdraw ~ estress + ese, data = stress))
+
+# Option - 2 #
+
+summary(lm(withdraw ~ estress + ese + estress * ese, data = stress))
+
+# option - 3 #
+
+summary(lm(withdraw ~ affect, data = stress))
+
+summary(lm(affect ~ ese + estress + ese * estress, data = stress))
+```
+
+
+```{r, message=FALSE, echo=FALSE}
+library(psych)
+
+stress$inter1 <- stress$tenure * stress$estress
+
+stress$inter2 <- stress$tenure * stress$ese
+
+mediate("withdraw",c("estress", "ese"), m = "affect", data = stress,plot=T)
+
+
+
+
+```
+
+
+Now the above set of regtession can be structured in the following manner (error term ignored)
+
+withdraw = a1 * ese + a2 * estress + a3 * affect - (equation # 1)
+
+affect = b1 * ese  + b2 * estress (equation # 2)
+
+ese = c1 * estress (equation # 3)
+
+Therefore, the above system of equation can be written as follows by substrituting the values of "ese" and "affect" 
+
+withdrraw = a1 * c1 * estress + a2 * estress + a3 * (b1 * ese + b2 * estress)
+
+= (a1 * c1 + a2) * estress + a3 * (b1 * c1 * ese + b2* estress)
+
+It can also be noted that as we substitute , we end up multiplying the regression coefficient. This can be considered as "Indirect effect". 
+
+In context of first equation , "a1" is the total effect and (a1 * c1) is the indirect effect. The difference between total effect and indirect effect is "Direct Effect". 
+
+
+```{r}
+
+summary(lm(ese ~ estress, data = stress)) # c1 = -0.10
+
+summary(lm(affect ~ ese + estress, data = stress)) # b1 = -0.15 , b2 = 0.15
+
+summary(lm(affect ~ ese + estress, data = stress))
+
+mediate("withdraw",c("estress", "ese"), m = "affect", data = stress,plot=T)
+
+
+```
+
